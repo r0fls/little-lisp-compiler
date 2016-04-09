@@ -1,3 +1,14 @@
+class Cursor():
+    def __init__(self, cnt=0):
+        self.count = cnt
+    def increment(self):
+        self.count += 1
+    def __gt__(self, num):
+        return self.count > num
+    def __lt__(self, num):
+        return self.count < num
+
+
 def tokenizer(code):
     current = 0
     tokens = list()
@@ -46,21 +57,6 @@ def tokenizer(code):
             raise ValueError('I don\'t know what this character is:{}'.format(char))
 
     return tokens
-
-class Cursor():
-    def __init__(self, cnt=0):
-        self.count = cnt
-    def increment(self):
-        self.count += 1
-    def __str__ (self):
-        return str(self.count)
-    def __repr__(self):
-        return str(self.count)
-    def __gt__(self, num):
-        return self.count > num
-    def __lt__(self, num):
-        return self.count < num
-
 def parser(tokens):
     current = Cursor() 
     def walk(tokens, current):
@@ -102,9 +98,6 @@ def traverser(ast, visitor):
     def traverse_array(array, parent):
         map(lambda x: traverse_node(x, parent), array)
     def traverse_node(node, parent):
-        #method = visitor[node['type']]
-        #if method:
-        #    method(node, parent)
         if node['type'] == 'Program':
             traverse_array(node['body'], node)
         elif node['type'] == 'CallExpression':
