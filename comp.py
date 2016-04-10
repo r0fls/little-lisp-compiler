@@ -1,3 +1,13 @@
+CODE = "(add 2 (subtract 4 2))"
+BUILTINS = { 
+        '>': 'logical',
+        '<': 'logical',
+        'if': 'logical', 
+        'for': 'logical',
+        'true': 'boolean', 
+        'false': 'boolean'
+        } 
+
 class Cursor():
     def __init__(self, cnt=0):
         self.count = cnt
@@ -31,9 +41,17 @@ def tokenizer(code):
         if char.isspace():
             current += 1
             continue
-        if char <= '9' and char >= '0':
+        builtin = BUILTINS.get(char, False)
+        if builtin:
+            current += 1
+            tokens.append({
+                'type': BUILTINS[char],
+                'value': char 
+                })
+            continue
+        if char <= '9' and char >= '0' or char == '.':
             value = ''
-            while char <= '9' and char >= '0':
+            while char <= '9' and char >= '0' or char == '.':
                 value += char
                 current += 1
                 char = code[current]
@@ -48,15 +66,23 @@ def tokenizer(code):
                 value += char
                 current += 1
                 char = code[current]
-            tokens.append({
-               'type':'name',
-               'value':value
-               })
+            builtin = BUILTINS.get(value, False)
+            if builtin:
+                tokens.append({
+                    'type': BUILTINS[value],
+                    'value': value
+                    })
+            else:
+                tokens.append({
+                    'type':'name',
+                    'value':value
+                    })
             continue
         else:
             raise ValueError('I don\'t know what this character is:{}'.format(char))
 
     return tokens
+
 def parser(tokens):
     current = Cursor() 
     def walk(tokens, current):
@@ -123,19 +149,30 @@ def transformer(ast):
             'value': node['value']
             })
     def call_expression(node, parent):
-        expression = {
-                'type':'CallExpression',
-                'callee':{
-                    'type':'Identifier',
-                    'name':node['name']
-                    },
-                'arguments':[]
-                }
+        builtin = BUILTINS.get(node['value'], False)
+        if not builtin:
+            expression = {
+                    'type':'CallExpression',
+                    'callee':{
+                        'type':'Identifier',
+                        'name':node['name']
+                        },
+                    'arguments':[]
+                    }
+        else:
+            expression = {
+                    'type':'CallExpression',
+                    'callee':{
+                        'type':'Builtin',
+                        'name':node['name']
+                        },
+                    'arguments':[]
+                    }
         node['context'] = expression['arguments']
         if parent['type'] != 'CallExpression':
             expression = {
                     'type':'ExpressionStatement',
-                    'expression':expression
+                    'expression': expression
                     }
         parent['context'].append(expression) 
     traverser(ast, {
@@ -150,9 +187,14 @@ def code_generator(node):
     elif node['type'] == 'ExpressionStatement':
         return code_generator(node['expression']) # +';'
     elif node['type'] == 'CallExpression':
-        return code_generator(node['callee']) + \
-                '(' + ', '.join(map(code_generator, node['arguments'])) + \
-                ')'
+        if node['expression']['callee']['type'] == 'Identifier':
+            return code_generator(node['callee']) + \
+                    '(' + ', ' \
+                    .join(map(code_generator, node['arguments'])) + \
+                    ')'
+        elif node['expression']['callee']['type'] == 'Builtin':
+            return code_generator(node['callee']) + \
+                    + ':\n '.join(map(code_generator, node['arguments']))
     elif node['type'] == 'Identifier':
         return node['name']
     elif node['type'] == 'NumberLiteral':
@@ -166,3 +208,13 @@ def compiler(code):
     newAst = transformer(ast)
     output = code_generator(newAst)
     return output
+
+def main():
+    def add(n, k):
+        return n + k
+    def subtract(i, j):
+        return i - j
+    print(eval(compiler(CODE)))
+
+if __name__ == "__main__":
+    main()
