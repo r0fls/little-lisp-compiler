@@ -1,11 +1,11 @@
 CODE = "(add 2 (subtract 4 2))"
 BUILTINS = { 
-        '>': 'logical',
-        '<': 'logical',
-        'if': 'logical', 
-        'for': 'logical',
-        'true': 'boolean', 
-        'false': 'boolean'
+        '>': 'infix',
+        '<': 'infix',
+        'if': 'prefix', 
+        'for': 'prefix',
+        'true': 'value', 
+        'false': 'value'
         } 
 
 class Cursor():
@@ -149,16 +149,16 @@ def transformer(ast):
             'value': node['value']
             })
     def call_expression(node, parent):
-        builtin = BUILTINS.get(node['value'], False)
+        builtin = BUILTINS.get(node.get('name',''), False)
         if not builtin:
             expression = {
-                    'type':'CallExpression',
-                    'callee':{
-                        'type':'Identifier',
-                        'name':node['name']
-                        },
-                    'arguments':[]
-                    }
+                        'type':'CallExpression',
+                        'callee':{
+                            'type':'Identifier',
+                            'name':node['name']
+                            },
+                        'arguments':[]
+                        }
         else:
             expression = {
                     'type':'CallExpression',
@@ -187,15 +187,22 @@ def code_generator(node):
     elif node['type'] == 'ExpressionStatement':
         return code_generator(node['expression']) # +';'
     elif node['type'] == 'CallExpression':
-        if node['expression']['callee']['type'] == 'Identifier':
+        if node['callee']['type'] == 'Identifier':
             return code_generator(node['callee']) + \
                     '(' + ', ' \
                     .join(map(code_generator, node['arguments'])) + \
                     ')'
-        elif node['expression']['callee']['type'] == 'Builtin':
-            return code_generator(node['callee']) + \
-                    + ':\n '.join(map(code_generator, node['arguments']))
+        elif node['callee']['type'] == 'Builtin':
+            if BUILTINS[node['callee']['name']] == 'prefix':
+                return code_generator(node['callee']) + ' '+\
+                        ':\n '.join(map(code_generator, node['arguments']))
+            elif BUILTINS[node['callee']['name']] == 'infix':
+                return code_generator(node['arguments'][0])+\
+                        code_generator(node['callee'])+\
+                        code_generator(node['arguments'][1])
     elif node['type'] == 'Identifier':
+        return node['name']
+    elif node['type'] == 'Builtin':
         return node['name']
     elif node['type'] == 'NumberLiteral':
         return node['value']
