@@ -1,5 +1,9 @@
 CODE = "(add 2 (subtract 4 2))"
 BUILTINS = { 
+        '+': 'infix',
+        '-': 'infix',
+        '==': 'infix',
+        '=': 'infix',
         '>': 'infix',
         '<': 'infix',
         'if': 'prefix', 
@@ -17,7 +21,8 @@ class Cursor():
         return self.count > num
     def __lt__(self, num):
         return self.count < num
-
+    def __hash__(self):
+        return hash(self.count)
 
 def tokenizer(code):
     current = 0
@@ -41,12 +46,23 @@ def tokenizer(code):
         if char.isspace():
             current += 1
             continue
-        builtin = BUILTINS.get(char, False)
-        if builtin:
-            current += 1
+        #builtin = BUILTINS.get(char, False)
+        #if builtin:
+        #    current += 1
+        #    tokens.append({
+        #        'type': BUILTINS[char],
+        #        'value': char 
+        #        })
+            continue
+        if char in BUILTINS.keys():
+            value = ''
+            while char in BUILTINS.keys():
+                value += char
+                current += 1
+                char = code[current]
             tokens.append({
-                'type': BUILTINS[char],
-                'value': char 
+                'type':BUILTINS[value],
+                'value': value
                 })
             continue
         if char <= '9' and char >= '0' or char == '.':
@@ -93,7 +109,12 @@ def parser(tokens):
                 'type':'NumberLiteral',
                 'value':token['value']
                 }
-
+        if token['type'] == 'name':
+            current.increment()
+            return {
+                'type':'NumberLiteral',
+                'value':token['value']
+                }
         if token['type'] == 'paren' and token['value'] == '(':
             current.increment()
             token = tokens[current.count]
@@ -195,10 +216,11 @@ def code_generator(node):
         elif node['callee']['type'] == 'Builtin':
             if BUILTINS[node['callee']['name']] == 'prefix':
                 return code_generator(node['callee']) + ' '+\
-                        ':\n '.join(map(code_generator, node['arguments']))
+                        ':\n    '.join(map(code_generator, \
+                            node['arguments']))
             elif BUILTINS[node['callee']['name']] == 'infix':
-                return code_generator(node['arguments'][0])+\
-                        code_generator(node['callee'])+\
+                return code_generator(node['arguments'][0]) + ' ' +\
+                        code_generator(node['callee']) + ' ' +\
                         code_generator(node['arguments'][1])
     elif node['type'] == 'Identifier':
         return node['name']
