@@ -1,6 +1,7 @@
 CODE = "(add 2 (subtract 4 2))"
 BUILTINS = { 
         '+': 'infix',
+        '*': 'infix',
         '-': 'infix',
         '==': 'infix',
         '=': 'infix',
